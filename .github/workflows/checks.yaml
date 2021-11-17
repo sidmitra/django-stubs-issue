@@ -1,0 +1,37 @@
+name: checks
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python
+      id: setup-python
+      uses: actions/setup-python@master
+      with:
+        python-version: 3.9 # same minor version as runtime.txt. Not pinning patch version since it breaks on auto-upgrade https://github.com/actions/setup-python/issues/64
+    - name: Install OS dependencies
+      run: |
+        # Add || exit 0 because of
+        # https://github.community/t5/GitHub-Actions/ubuntu-latest-Apt-repository-list-issues/td-p/41122
+        sudo apt -y update --allow-releaseinfo-change || exit 0
+        sudo apt install -y libpq-dev libxml2-dev libxmlsec1-dev
+    - name: Setup venv and install dependencies
+      run: |
+        python -m venv /tmp/venv
+        source /tmp/venv/bin/activate
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: mypy
+      env:
+        PYTHONWARNINGS: "ignore"
+      run: |
+        source /tmp/venv/bin/activate
+        mypy --config-file=pyproject.toml . --show-traceback
